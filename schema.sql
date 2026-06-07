@@ -193,10 +193,10 @@ begin
     raise exception 'Class has already been resolved';
   end if;
 
-  -- 6. Enforce 5-minute time lock
-  -- Database local time (now()) compared against (class_time - 5 minutes)
-  if now() > (class_start_time - interval '5 minutes') then
-    raise exception 'Betting is closed for this class (deadline was 5 minutes before start)';
+  -- 6. Enforce 20-minute time lock
+  -- Database local time (now()) compared against (class_time - 20 minutes)
+  if now() > (class_start_time - interval '20 minutes') then
+    raise exception 'Betting is closed for this class (deadline was 20 minutes before start)';
   end if;
 
   -- 7. Deduct 10 tokens
@@ -312,21 +312,18 @@ $$;
 -- Users can guess and place bets on these dates.
 
 insert into public.schedule (class_date, class_time) values
-  ('2026-06-08', '2026-06-08 08:15:00+02'),
-  ('2026-06-09', '2026-06-09 10:00:00+02'),
-  ('2026-06-10', '2026-06-10 08:15:00+02'),
+  ('2026-06-07', '2026-06-07 22:17:00+02'),
+  ('2026-06-08', '2026-06-08 13:30:00+02'),
+  ('2026-06-09', '2026-06-09 09:30:00+02'),
+  ('2026-06-10', '2026-06-10 09:15:00+02'),
   ('2026-06-11', '2026-06-11 14:00:00+02'),
-  ('2026-06-12', '2026-06-12 08:15:00+02'),
-  ('2026-06-15', '2026-06-15 08:15:00+02'),
-  ('2026-06-16', '2026-06-16 10:00:00+02'),
-  ('2026-06-17', '2026-06-17 08:15:00+02'),
+  ('2026-06-12', '2026-06-12 11:00:00+02'),
+  ('2026-06-15', '2026-06-15 13:30:00+02'),
+  ('2026-06-16', '2026-06-16 08:30:00+02'),
+  ('2026-06-17', '2026-06-17 09:15:00+02'),
   ('2026-06-18', '2026-06-18 14:00:00+02'),
-  ('2026-06-19', '2026-06-19 08:15:00+02'),
-  ('2026-06-22', '2026-06-22 08:15:00+02'),
-  ('2026-06-23', '2026-06-23 10:00:00+02'),
-  ('2026-06-24', '2026-06-24 08:15:00+02'),
-  ('2026-06-25', '2026-06-25 14:00:00+02')
-on conflict (class_date) do nothing;
+  ('2026-06-19', '2026-06-19 08:15:00+02')
+on conflict (class_date) do update set class_time = excluded.class_time;
 
 
 -- ==========================================

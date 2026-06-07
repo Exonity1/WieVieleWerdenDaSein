@@ -22,20 +22,17 @@ if (!supabaseKey || supabaseKey.includes("your-anon-key")) {
 
 // 14-Day Hardcoded Schedule (German/Berlin timezone context)
 const CLASS_SCHEDULE = {
-  '2026-06-08': '08:15',
-  '2026-06-09': '10:00',
-  '2026-06-10': '08:15',
-  '2026-06-11': '14:00',
-  '2026-06-12': '08:15',
-  '2026-06-15': '08:15',
-  '2026-06-16': '10:00',
-  '2026-06-17': '08:15',
-  '2026-06-18': '14:00',
-  '2026-06-19': '08:15',
-  '2026-06-22': '08:15',
-  '2026-06-23': '10:00',
-  '2026-06-24': '08:15',
-  '2026-06-25': '14:00'
+  '2026-06-07': '22:17', // Active test class (starts in 10 mins, locks immediately)
+  '2026-06-08': '13:30', // Preventive Security
+  '2026-06-09': '09:30', // Softwarequalität
+  '2026-06-10': '09:15', // Statistik
+  '2026-06-11': '14:00', // IT-Sicherheit
+  '2026-06-12': '11:00', // Praxis der Softwareentwicklung
+  '2026-06-15': '13:30', // Preventive Security
+  '2026-06-16': '08:30', // Softwarequalität
+  '2026-06-17': '09:15', // Statistik
+  '2026-06-18': '14:00', // IT-Sicherheit
+  '2026-06-19': '08:15'  // Statistik
 };
 
 // Application State
@@ -415,7 +412,7 @@ function getActiveBettingClass() {
     // Schedule starts in Europe/Berlin (UTC+2 in Summer, e.g. June)
     // Parse it as local timestamp with +02:00 zone to align with database seed
     const classTime = new Date(`${dateStr}T${timeStr}:00+02:00`);
-    const deadlineTime = classTime.getTime() - (5 * 60 * 1000); // 5 minutes lock
+    const deadlineTime = classTime.getTime() - (20 * 60 * 1000); // 20 minutes lock
     
     if (now < deadlineTime) {
       return {
@@ -434,7 +431,7 @@ function getActiveBettingClass() {
   return {
     date: lastDate,
     time: lastTime,
-    deadlineTimestamp: classTime.getTime() - (5 * 60 * 1000),
+    deadlineTimestamp: classTime.getTime() - (20 * 60 * 1000),
     classTimestamp: classTime.getTime(),
     allPast: true
   };
@@ -629,7 +626,7 @@ function renderScheduleTimeline() {
       }
     } else {
       // Unresolved: Check if betting time limit is active
-      const deadline = new Date(item.class_time).getTime() - (5 * 60 * 1000);
+      const deadline = new Date(item.class_time).getTime() - (20 * 60 * 1000);
       const isLocked = Date.now() >= deadline;
       
       if (isLocked) {
