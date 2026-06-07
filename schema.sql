@@ -327,3 +327,13 @@ insert into public.schedule (class_date, class_time) values
   ('2026-06-24', '2026-06-24 08:15:00+02'),
   ('2026-06-25', '2026-06-25 14:00:00+02')
 on conflict (class_date) do nothing;
+
+
+-- ==========================================
+-- GRANT TABLE-LEVEL PRIVILEGES
+-- ==========================================
+-- Ensure the authenticated and anon roles have table-level SELECT access.
+-- Row Level Security (RLS) policies will still enforce who can see what.
+grant select on public.profiles to authenticated, anon;
+grant select on public.schedule to authenticated, anon;
+grant select on public.bets to authenticated;
