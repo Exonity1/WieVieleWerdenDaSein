@@ -22,15 +22,19 @@ begin
   raise notice '=== STARTING ATTENDANCE BETTING SECURITY TESTS ===';
 
   -- ----------------------------------------------------
-  -- 1. SETUP MOCK PROFILES AND SCHEDULES
+  -- 1. SETUP MOCK AUTH USERS (Automatically triggers profile creation)
   -- ----------------------------------------------------
-  -- Insert mock student profile
-  insert into public.profiles (id, username, tokens, is_admin)
-  values (student_id, 'test_student', 100, false);
+  insert into auth.users (id, email, aud, role) values
+    (student_id, 'student1@example.com', 'authenticated', 'authenticated'),
+    (admin_id, 'admin1@example.com', 'authenticated', 'authenticated'),
+    ('00000000-0000-0000-0000-000000000003', 'user3@example.com', 'authenticated', 'authenticated'),
+    ('00000000-0000-0000-0000-000000000004', 'user4@example.com', 'authenticated', 'authenticated'),
+    ('00000000-0000-0000-0000-000000000005', 'user5@example.com', 'authenticated', 'authenticated'),
+    ('00000000-0000-0000-0000-000000000006', 'user6@example.com', 'authenticated', 'authenticated');
 
-  -- Insert mock admin profile
-  insert into public.profiles (id, username, tokens, is_admin)
-  values (admin_id, 'test_admin', 100, true);
+  -- Elevate admin mock user profile and customize student username/tokens
+  update public.profiles set is_admin = true where id = admin_id;
+  update public.profiles set username = 'test_student', tokens = 100 where id = student_id;
 
   -- Seed a future class (open for betting)
   insert into public.schedule (class_date, class_time, is_resolved)
@@ -151,27 +155,20 @@ begin
   raise notice 'Test 7: Admin resolving bets with different distances...';
   
   -- Create mock bets for exact match, off-by-1, off-by-2, and off-by-3
+  -- Profiles are already auto-created via auth.users in Step 1.
   -- Mock user 3: Guess 40 (Exact match -> +50 tokens)
-  insert into public.profiles (id, username, tokens, is_admin)
-  values ('00000000-0000-0000-0000-000000000003', 'user_exact', 100, false);
   insert into public.bets (user_id, bet_date, guess, status, payout)
   values ('00000000-0000-0000-0000-000000000003', test_class_date, 40, 'pending', 0);
 
   -- Mock user 4: Guess 41 (Off-by-1 -> +20 tokens)
-  insert into public.profiles (id, username, tokens, is_admin)
-  values ('00000000-0000-0000-0000-000000000004', 'user_off1', 100, false);
   insert into public.bets (user_id, bet_date, guess, status, payout)
   values ('00000000-0000-0000-0000-000000000004', test_class_date, 41, 'pending', 0);
 
   -- Mock user 5: Guess 42 (Off-by-2 -> +10 tokens)
-  insert into public.profiles (id, username, tokens, is_admin)
-  values ('00000000-0000-0000-0000-000000000005', 'user_off2', 100, false);
   insert into public.bets (user_id, bet_date, guess, status, payout)
   values ('00000000-0000-0000-0000-000000000005', test_class_date, 42, 'pending', 0);
 
   -- Mock user 6: Guess 43 (Off-by-3 -> 0 tokens)
-  insert into public.profiles (id, username, tokens, is_admin)
-  values ('00000000-0000-0000-0000-000000000006', 'user_off3', 100, false);
   insert into public.bets (user_id, bet_date, guess, status, payout)
   values ('00000000-0000-0000-0000-000000000006', test_class_date, 43, 'pending', 0);
 
