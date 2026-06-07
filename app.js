@@ -20,20 +20,7 @@ if (!supabaseKey || supabaseKey.includes("your-anon-key")) {
   supabaseKey = localStorage.getItem("supabase_anon_key") || "";
 }
 
-// 14-Day Hardcoded Schedule (German/Berlin timezone context)
-const CLASS_SCHEDULE = {
-  '2026-06-07': '22:17', // Active test class (starts in 10 mins, locks immediately)
-  '2026-06-08': '13:30', // Preventive Security
-  '2026-06-09': '09:30', // Softwarequalität
-  '2026-06-10': '09:15', // Statistik
-  '2026-06-11': '14:00', // IT-Sicherheit
-  '2026-06-12': '11:00', // Praxis der Softwareentwicklung
-  '2026-06-15': '13:30', // Preventive Security
-  '2026-06-16': '08:30', // Softwarequalität
-  '2026-06-17': '09:15', // Statistik
-  '2026-06-18': '14:00', // IT-Sicherheit
-  '2026-06-19': '08:15'  // Statistik
-};
+// Note: Schedule is fully database-driven. Seeding is managed in schema.sql.
 
 // Application State
 let supabase = null;
@@ -43,6 +30,7 @@ let currentActiveBettingClass = null; // { date, time, timestamp }
 let countdownInterval = null;
 let userBets = [];
 let dbSchedule = [];
+let isScheduleLoaded = false;
 
 // ==========================================
 // TOAST NOTIFICATIONS
@@ -402,39 +390,57 @@ async function onSessionChanged(session) {
 // TIME-LOCK & DEADLINE SCHEDULER
 // ==========================================
 
-// Determines the active betting class from class schedules
+// Determines the active betting class from database class schedule
 function getActiveBettingClass() {
   const now = Date.now();
-  const sortedDates = Object.keys(CLASS_SCHEDULE).sort();
   
-  for (const dateStr of sortedDates) {
-    const timeStr = CLASS_SCHEDULE[dateStr];
-    // Schedule starts in Europe/Berlin (UTC+2 in Summer, e.g. June)
-    // Parse it as local timestamp with +02:00 zone to align with database seed
-    const classTime = new Date(`${dateStr}T${timeStr}:00+02:00`);
-    const deadlineTime = classTime.getTime() - (20 * 60 * 1000); // 20 minutes lock
+  // Ensure we have database schedule entries loaded
+  if (dbSchedule && dbSchedule.length > 0) {
+    // Filter out resolved classes and sort by class_time ascending
+    const unresolved = dbSchedule
+      .filter(item => !item.is_resolved)
+      .sort((a, b) => new Date(a.class_time) - new Date(b.class_time));
+      
+    for (const item of unresolved) {
+      const classTime = new Date(item.class_time);
+      const deadlineTime = classTime.getTime() - (20 * 60 * 1000); // 20 minutes lock
+      
+      if (now < deadlineTime) {
+        // Format time to HH:MM in Europe/Berlin (local German class timezone)
+        const formattedTime = classTime.toLocaleTimeString('de-DE', { 
+          hour: '2-digit', 
+          minute: '2-digit', 
+          timeZone: 'Europe/Berlin' 
+        });
+        return {
+          date: item.class_date,
+          time: formattedTime,
+          deadlineTimestamp: deadlineTime,
+          classTimestamp: classTime.getTime()
+        };
+      }
+    }
     
-    if (now < deadlineTime) {
+    // Fallback: if all open classes are locked, return the next unresolved class as locked
+    if (unresolved.length > 0) {
+      const nextClass = unresolved[0];
+      const classTime = new Date(nextClass.class_time);
+      const formattedTime = classTime.toLocaleTimeString('de-DE', { 
+        hour: '2-digit', 
+        minute: '2-digit', 
+        timeZone: 'Europe/Berlin' 
+      });
       return {
-        date: dateStr,
-        time: timeStr,
-        deadlineTimestamp: deadlineTime,
-        classTimestamp: classTime.getTime()
+        date: nextClass.class_date,
+        time: formattedTime,
+        deadlineTimestamp: classTime.getTime() - (20 * 60 * 1000),
+        classTimestamp: classTime.getTime(),
+        allPast: true
       };
     }
   }
   
-  // Fallback: If all scheduled dates are in the past, return the last date (locked state)
-  const lastDate = sortedDates[sortedDates.length - 1];
-  const lastTime = CLASS_SCHEDULE[lastDate];
-  const classTime = new Date(`${lastDate}T${lastTime}:00+02:00`);
-  return {
-    date: lastDate,
-    time: lastTime,
-    deadlineTimestamp: classTime.getTime() - (20 * 60 * 1000),
-    classTimestamp: classTime.getTime(),
-    allPast: true
-  };
+  return null;
 }
 
 function startCountdown() {
@@ -445,9 +451,15 @@ function startCountdown() {
   const dateSubElement = document.getElementById('countdown-date-sub');
   
   if (!currentActiveBettingClass) {
-    timerElement.innerText = "No Class Scheduled";
-    timerElement.className = "countdown-timer expired";
-    dateSubElement.innerText = "";
+    if (!isScheduleLoaded) {
+      timerElement.innerText = "--h --m --s";
+      timerElement.className = "countdown-timer loading";
+      dateSubElement.innerText = "Loading schedule...";
+    } else {
+      timerElement.innerText = "No Class Scheduled";
+      timerElement.className = "countdown-timer expired";
+      dateSubElement.innerText = "";
+    }
     document.getElementById('bet-submit-btn').disabled = true;
     return;
   }
@@ -533,10 +545,15 @@ async function loadDashboardData() {
     }
     userBets = bets || [];
 
-    // 4. Fetch the database class schedule (limit 14)
+    // Fetch schedule from 3 days ago onwards to keep layout relevant and avoid limit exhaustion issues
+    const threeDaysAgo = new Date();
+    threeDaysAgo.setDate(threeDaysAgo.getDate() - 3);
+    const filterDateStr = threeDaysAgo.toLocaleDateString('sv-SE');
+
     const { data: schedule, error: schedErr } = await supabase
       .from('schedule')
       .select('*')
+      .gte('class_date', filterDateStr)
       .order('class_date', { ascending: true })
       .limit(14);
       
@@ -546,6 +563,10 @@ async function loadDashboardData() {
       return;
     }
     dbSchedule = schedule || [];
+    isScheduleLoaded = true;
+
+    // Re-evaluate active betting class and refresh countdown with latest DB schedule
+    startCountdown();
 
     // Render elements
     renderActiveBettingState();
@@ -603,7 +624,11 @@ function renderScheduleTimeline() {
     
     // Parse time
     const rawTime = new Date(item.class_time);
-    const formattedTime = rawTime.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    const formattedTime = rawTime.toLocaleTimeString('de-DE', { 
+      hour: '2-digit', 
+      minute: '2-digit', 
+      timeZone: 'Europe/Berlin' 
+    });
     
     // Calculate status badge details
     let badgeHtml = '';
