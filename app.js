@@ -255,6 +255,10 @@ async function handleLogin(e) {
     submitBtn.innerHTML = `<span>Sign In</span> <i class="fa-solid fa-right-to-bracket"></i>`;
   } else {
     showToast("Signed in successfully!", "success");
+    // Manual fallback to guarantee instant UI update
+    if (data && data.session) {
+      await onSessionChanged(data.session);
+    }
   }
 }
 
@@ -282,7 +286,10 @@ async function handleRegister(e) {
     submitBtn.innerHTML = `<span>Create Account</span> <i class="fa-solid fa-user-plus"></i>`;
   } else {
     showToast("Registration successful! Logging in...", "success");
-    // Under disabled confirmation email settings, Supabase logs the user in immediately
+    // Manual fallback to guarantee instant UI update
+    if (data && data.session) {
+      await onSessionChanged(data.session);
+    }
   }
 }
 
@@ -914,9 +921,12 @@ function mountApp() {
   document.getElementById('admin-resolve-form').addEventListener('submit', resolveBetsHandler);
   
   // 4. Subscribe to Supabase Auth State Events
-  supabase.auth.onAuthStateChange(async (event, session) => {
+  supabase.auth.onAuthStateChange((event, session) => {
     console.log("Auth event fired:", event);
-    await onSessionChanged(session);
+    onSessionChanged(session).catch(err => {
+      console.error("Auth state change callback error:", err);
+      showToast("Session transition error: " + err.message, "error");
+    });
   });
 }
 
