@@ -126,7 +126,7 @@ exception
     );
     return new;
 end;
-$$ language plpgsql security definer;
+$$ language plpgsql security definer set search_path = public;
 
 -- Trigger execution
 create or replace trigger on_auth_user_created
@@ -147,6 +147,7 @@ create or replace function public.place_bet(
 returns integer -- Returns new token balance
 language plpgsql
 security definer -- Runs with database owner privileges, bypassing RLS to insert/update
+set search_path = public
 as $$
 declare
   user_id_val uuid;
@@ -222,6 +223,7 @@ create or replace function public.resolve_bets(
 returns integer -- Returns number of bets resolved
 language plpgsql
 security definer -- Runs with database owner privileges
+set search_path = public
 as $$
 declare
   caller_id uuid;
@@ -327,10 +329,19 @@ on conflict (class_date) do update set class_time = excluded.class_time;
 
 
 -- ==========================================
--- GRANT TABLE-LEVEL PRIVILEGES
+-- GRANT TABLE AND FUNCTION LEVEL PRIVILEGES
 -- ==========================================
 -- Ensure the authenticated and anon roles have table-level SELECT access.
 -- Row Level Security (RLS) policies will still enforce who can see what.
 grant select on public.profiles to authenticated, anon;
 grant select on public.schedule to authenticated, anon;
 grant select on public.bets to authenticated;
+
+-- Revoke default PUBLIC execution permissions on SECURITY DEFINER functions to prevent anon/unauthorized execution
+revoke execute on function public.handle_new_user() from public, anon, authenticated;
+revoke execute on function public.place_bet(date, integer) from public, anon, authenticated;
+revoke execute on function public.resolve_bets(integer, date) from public, anon, authenticated;
+
+-- Grant execution explicitly to the authorized roles
+grant execute on function public.place_bet(date, integer) to authenticated;
+grant execute on function public.resolve_bets(integer, date) to authenticated;
