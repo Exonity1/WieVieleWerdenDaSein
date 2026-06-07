@@ -300,42 +300,71 @@ async function onSessionChanged(session) {
   if (session) {
     currentUser = session.user;
     
-    // Fetch user profile from database
-    const { data: profile, error } = await supabase
-      .from('profiles')
-      .select('*')
-      .eq('id', currentUser.id)
-      .single();
+    // Retry mechanism to fetch user profile (avoids race condition during signup triggers)
+    let profile = null;
+    let profileError = null;
+    
+    for (let attempt = 1; attempt <= 5; attempt++) {
+      const { data, error } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('id', currentUser.id)
+        .single();
+        
+      if (!error && data) {
+        profile = data;
+        break;
+      }
       
-    if (error) {
-      console.error("Error loading profile:", error);
-      showToast("Error loading profile details.", "error");
+      profileError = error;
+      
+      // If it is a real permission/policy error (other than PGRST116 row-not-found), 
+      // there is no point in retrying. But for row-not-found we wait 500ms for trigger completion.
+      if (error && error.code !== 'PGRST116') {
+        break;
+      }
+      
+      console.log(`Profile not found yet (attempt ${attempt}/5), retrying in 500ms...`);
+      await new Promise(resolve => setTimeout(resolve, 500));
+    }
+      
+    if (!profile) {
+      console.error("Error loading profile after retries:", profileError);
+      showToast("Error loading profile details: " + (profileError ? `${profileError.message} (Code: ${profileError.code})` : "Not found in database"), "error");
       return;
     }
     
     currentProfile = profile;
     
-    // Update Header UI details
-    document.getElementById('user-tokens-val').innerText = profile.tokens;
-    document.getElementById('user-display-name').innerText = profile.username;
-    document.getElementById('user-avatar').innerText = profile.username.charAt(0).toUpperCase();
-    
-    // Check Admin status
-    if (profile.is_admin) {
-      document.getElementById('admin-panel-badge').style.display = 'inline-flex';
-    } else {
-      document.getElementById('admin-panel-badge').style.display = 'none';
-      if (document.getElementById('admin-section').classList.contains('active')) {
+    try {
+      // Safe fallback for username
+      const username = profile.username || currentUser.email.split('@')[0] || "User";
+      
+      // Update Header UI details
+      document.getElementById('user-tokens-val').innerText = profile.tokens;
+      document.getElementById('user-display-name').innerText = username;
+      document.getElementById('user-avatar').innerText = username.charAt(0).toUpperCase();
+      
+      // Check Admin status
+      if (profile.is_admin) {
+        document.getElementById('admin-panel-badge').style.display = 'inline-flex';
+      } else {
+        document.getElementById('admin-panel-badge').style.display = 'none';
+        if (document.getElementById('admin-section').classList.contains('active')) {
+          switchView('dashboard');
+        }
+      }
+      
+      // Show application screens
+      document.getElementById('main-header').style.display = 'flex';
+      document.getElementById('main-footer').style.display = 'block';
+      
+      if (document.getElementById('auth-section').classList.contains('active')) {
         switchView('dashboard');
       }
-    }
-    
-    // Show application screens
-    document.getElementById('main-header').style.display = 'flex';
-    document.getElementById('main-footer').style.display = 'block';
-    
-    if (document.getElementById('auth-section').classList.contains('active')) {
-      switchView('dashboard');
+    } catch (uiError) {
+      console.error("UI rendering error:", uiError);
+      showToast("UI Rendering failed: " + uiError.message, "error");
     }
   } else {
     // Reset session variables
@@ -468,50 +497,59 @@ function startCountdown() {
 async function loadDashboardData() {
   if (!currentUser) return;
   
-  // 1. Start countdown timer calculations
-  startCountdown();
-  
-  // 2. Fetch User Profile to keep tokens updated
-  const { data: updatedProfile } = await supabase
-    .from('profiles')
-    .select('tokens')
-    .eq('id', currentUser.id)
-    .single();
-  if (updatedProfile) {
-    currentProfile.tokens = updatedProfile.tokens;
-    document.getElementById('user-tokens-val').innerText = updatedProfile.tokens;
-  }
-
-  // 3. Fetch all bets placed by this user
-  const { data: bets, error: betsErr } = await supabase
-    .from('bets')
-    .select('*')
-    .eq('user_id', currentUser.id);
+  try {
+    // 1. Start countdown timer calculations
+    startCountdown();
     
-  if (betsErr) {
-    console.error("Error loading user bets:", betsErr);
-    showToast("Error retrieving betting history.", "error");
-    return;
-  }
-  userBets = bets || [];
+    // 2. Fetch User Profile to keep tokens updated
+    const { data: updatedProfile, error: profileErr } = await supabase
+      .from('profiles')
+      .select('tokens')
+      .eq('id', currentUser.id)
+      .single();
+      
+    if (profileErr) {
+      console.error("Error updating profile tokens:", profileErr);
+      showToast("Error updating token balance: " + profileErr.message, "error");
+    } else if (updatedProfile) {
+      currentProfile.tokens = updatedProfile.tokens;
+      document.getElementById('user-tokens-val').innerText = updatedProfile.tokens;
+    }
 
-  // 4. Fetch the database class schedule (limit 14)
-  const { data: schedule, error: schedErr } = await supabase
-    .from('schedule')
-    .select('*')
-    .order('class_date', { ascending: true })
-    .limit(14);
-    
-  if (schedErr) {
-    console.error("Error loading schedule:", schedErr);
-    showToast("Error retrieving class schedule.", "error");
-    return;
-  }
-  dbSchedule = schedule || [];
+    // 3. Fetch all bets placed by this user
+    const { data: bets, error: betsErr } = await supabase
+      .from('bets')
+      .select('*')
+      .eq('user_id', currentUser.id);
+      
+    if (betsErr) {
+      console.error("Error loading user bets:", betsErr);
+      showToast("Error retrieving betting history: " + betsErr.message, "error");
+      return;
+    }
+    userBets = bets || [];
 
-  // Render elements
-  renderActiveBettingState();
-  renderScheduleTimeline();
+    // 4. Fetch the database class schedule (limit 14)
+    const { data: schedule, error: schedErr } = await supabase
+      .from('schedule')
+      .select('*')
+      .order('class_date', { ascending: true })
+      .limit(14);
+      
+    if (schedErr) {
+      console.error("Error loading schedule:", schedErr);
+      showToast("Error retrieving class schedule: " + schedErr.message, "error");
+      return;
+    }
+    dbSchedule = schedule || [];
+
+    // Render elements
+    renderActiveBettingState();
+    renderScheduleTimeline();
+  } catch (dashboardErr) {
+    console.error("Dashboard processing failure:", dashboardErr);
+    showToast("Dashboard loading failed: " + dashboardErr.message, "error");
+  }
 }
 
 function renderActiveBettingState() {
