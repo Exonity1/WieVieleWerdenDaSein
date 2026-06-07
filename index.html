@@ -1,0 +1,331 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Attendance Bet - Daily Attendance Guessing Game</title>
+  
+  <!-- SEO Meta Tags -->
+  <meta name="description" content="A daily attendance betting game for students. Guess how many people attend class, climb the leaderboard, and earn tokens!">
+  <meta name="keywords" content="attendance, betting, student game, classroom attendance, guess game">
+  <meta name="author" content="WieVieleWerdenDaSein Team">
+  
+  <!-- FontAwesome Icons & Google Fonts -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  
+  <!-- App Stylesheet -->
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+  <!-- Toast Notification Alert Container -->
+  <div id="toast-container" aria-live="polite"></div>
+
+  <!-- Primary Application Wrapper -->
+  <div class="app-container">
+    
+    <!-- NAVIGATION HEADER (Dynamically hidden when logged out) -->
+    <header id="main-header" class="main-header" style="display: none;">
+      <div class="brand">
+        <i class="fa-solid fa-graduation-cap"></i>
+        <span>WieVieleWerdenDaSein?</span>
+      </div>
+      
+      <div class="user-nav-block">
+        <!-- Admin Panel Switch (Visible only if user.is_admin === true) -->
+        <span id="admin-panel-badge" class="admin-badge-trigger" style="display: none;">
+          <i class="fa-solid fa-user-shield"></i> Admin Panel
+        </span>
+        
+        <!-- Token Balance -->
+        <div class="user-token-display">
+          <i class="fa-solid fa-coins"></i>
+          <span id="user-tokens-val">---</span>
+          <span>Tokens</span>
+        </div>
+        
+        <!-- Profile info -->
+        <div class="user-profile-info">
+          <div id="user-avatar" class="avatar">U</div>
+          <span id="user-display-name">Loading...</span>
+        </div>
+        
+        <!-- Sign Out Button -->
+        <button id="logout-btn" class="btn-icon" title="Sign Out" aria-label="Sign Out">
+          <i class="fa-solid fa-right-from-bracket"></i>
+        </button>
+      </div>
+    </header>
+
+    <!-- ==========================================
+         VIEW 1: AUTHENTICATION (Login / Register)
+         ========================================== -->
+    <main id="auth-section" class="view-section active">
+      <div class="auth-wrapper">
+        <div class="glass-card auth-card">
+          <div class="brand" style="justify-content: center; margin-bottom: 15px; font-size: 1.8rem;">
+            <i class="fa-solid fa-graduation-cap"></i>
+            <span>ClassAttendance Bet</span>
+          </div>
+          
+          <!-- Tab Title -->
+          <h2 id="auth-title">Welcome Back</h2>
+          <p id="auth-description">Sign in to place your daily attendance guess!</p>
+          
+          <!-- LOGIN FORM -->
+          <form id="login-form">
+            <div class="form-group">
+              <label for="login-email-input">Email Address</label>
+              <div class="input-wrapper">
+                <i class="fa-solid fa-envelope"></i>
+                <input type="email" id="login-email-input" class="input-field" placeholder="student@example.com" required autocomplete="email">
+              </div>
+            </div>
+            
+            <div class="form-group">
+              <label for="login-password-input">Password</label>
+              <div class="input-wrapper">
+                <i class="fa-solid fa-lock"></i>
+                <input type="password" id="login-password-input" class="input-field" placeholder="••••••••" required autocomplete="current-password">
+              </div>
+            </div>
+            
+            <button type="submit" id="login-submit-btn" class="btn-primary">
+              <span>Sign In</span> <i class="fa-solid fa-right-to-bracket"></i>
+            </button>
+          </form>
+
+          <!-- REGISTER FORM (Hidden by default) -->
+          <form id="register-form" style="display: none;">
+            <div class="form-group">
+              <label for="register-username-input">Username</label>
+              <div class="input-wrapper">
+                <i class="fa-solid fa-user"></i>
+                <input type="text" id="register-username-input" class="input-field" placeholder="alex_guesses" required autocomplete="username" minlength="3" maxlength="20">
+              </div>
+            </div>
+            
+            <div class="form-group">
+              <label for="register-email-input">Email Address</label>
+              <div class="input-wrapper">
+                <i class="fa-solid fa-envelope"></i>
+                <input type="email" id="register-email-input" class="input-field" placeholder="student@example.com" required autocomplete="email">
+              </div>
+            </div>
+            
+            <div class="form-group">
+              <label for="register-password-input">Password</label>
+              <div class="input-wrapper">
+                <i class="fa-solid fa-lock"></i>
+                <input type="password" id="register-password-input" class="input-field" placeholder="Minimum 6 characters" required autocomplete="new-password" minlength="6">
+              </div>
+            </div>
+            
+            <button type="submit" id="register-submit-btn" class="btn-primary">
+              <span>Create Account</span> <i class="fa-solid fa-user-plus"></i>
+            </button>
+          </form>
+
+          <!-- Toggle Link -->
+          <div class="auth-toggle">
+            <span id="auth-toggle-prompt">Don't have an account?</span>
+            <span id="auth-toggle-link" class="auth-toggle-link">Sign Up</span>
+          </div>
+        </div>
+      </div>
+    </main>
+
+    <!-- ==========================================
+         VIEW 2: MAIN DASHBOARD
+         ========================================== -->
+    <main id="dashboard-section" class="view-section">
+      <div class="dashboard-grid">
+        
+        <!-- Left Side: Place Guess & Info -->
+        <section class="dashboard-left">
+          <div class="glass-card betting-widget" style="margin-bottom: 24px;">
+            <h2 class="section-title">
+              <i class="fa-solid fa-bullseye"></i>
+              <span>Today's Guessing Pool</span>
+            </h2>
+            
+            <!-- Countdown Timer -->
+            <div class="countdown-box">
+              <div class="countdown-label">Time Remaining to Bet</div>
+              <div id="countdown-timer" class="countdown-timer loading">--h --m --s</div>
+              <div id="countdown-date-sub" style="font-size: 0.8rem; color: var(--text-secondary); margin-top: 4px;">Loading schedule...</div>
+            </div>
+            
+            <!-- Bet Input Form (Hidden if already bet or closed) -->
+            <form id="bet-input-form" class="bet-form-container">
+              <div class="bet-input-box">
+                <span class="bet-input-label">I guess:</span>
+                <input type="number" id="bet-guess-input" class="bet-numeric-input" placeholder="0" min="0" required>
+                <span class="bet-input-label" style="padding-right: 15px;">people</span>
+              </div>
+              
+              <div class="bet-cost-tag">
+                <i class="fa-solid fa-circle-info"></i>
+                Placing this bet will lock in <span>10 Tokens</span>
+              </div>
+              
+              <button type="submit" id="bet-submit-btn" class="btn-primary">
+                <span>Lock In Bet</span> <i class="fa-solid fa-lock-open"></i>
+              </button>
+            </form>
+            
+            <!-- Placed Bet Status (Shown when already placed today) -->
+            <div id="placed-bet-info" class="placed-bet-status" style="display: none;">
+              <i class="fa-solid fa-circle-check"></i>
+              <h3>Bet Secured!</h3>
+              <p>You guessed attendance will be</p>
+              <div id="placed-bet-val" class="placed-bet-guess">42</div>
+              <p style="font-size: 0.85rem; color: var(--text-secondary);">Your guess is locked in. Payouts will trigger once class ends and results are uploaded.</p>
+            </div>
+          </div>
+
+          <!-- Rules Summary -->
+          <div class="glass-card">
+            <h3 class="section-title" style="font-size: 1.1rem; margin-bottom: 12px;">
+              <i class="fa-solid fa-circle-question"></i>
+              <span>How Payouts Work</span>
+            </h3>
+            <ul style="list-style-type: none; font-size: 0.85rem; color: var(--text-secondary); display: flex; flex-direction: column; gap: 8px;">
+              <li><i class="fa-solid fa-circle-check" style="color: var(--color-secondary); margin-right: 8px;"></i> Placing a bet costs exactly <strong>10 Tokens</strong>.</li>
+              <li><i class="fa-solid fa-circle-check" style="color: var(--color-secondary); margin-right: 8px;"></i> <strong>Distance 0</strong> (Exact guess): <strong>+50 Tokens</strong> profit.</li>
+              <li><i class="fa-solid fa-circle-check" style="color: var(--color-secondary); margin-right: 8px;"></i> <strong>Distance 1</strong> (Off by 1): <strong>+20 Tokens</strong> profit.</li>
+              <li><i class="fa-solid fa-circle-check" style="color: var(--color-secondary); margin-right: 8px;"></i> <strong>Distance 2</strong> (Off by 2): <strong>+10 Tokens</strong> profit.</li>
+              <li><i class="fa-solid fa-circle-check" style="color: var(--color-secondary); margin-right: 8px;"></i> <strong>Distance &gt; 2</strong>: No payout (0 tokens).</li>
+              <li><i class="fa-solid fa-circle-check" style="color: var(--color-secondary); margin-right: 8px;"></i> Bets close strictly <strong>5 minutes</strong> before class start.</li>
+            </ul>
+          </div>
+        </section>
+        
+        <!-- Right Side: 14 Day Class Timeline -->
+        <section class="dashboard-right">
+          <div class="glass-card" style="height: 100%; display: flex; flex-direction: column;">
+            <h2 class="section-title">
+              <i class="fa-solid fa-calendar-days"></i>
+              <span>14-Day Class Schedule</span>
+            </h2>
+            
+            <div id="schedule-list" class="schedule-container">
+              <!-- Loading Skeleton -->
+              <div class="schedule-item loading-skeleton">Loading</div>
+              <div class="schedule-item loading-skeleton">Loading</div>
+              <div class="schedule-item loading-skeleton">Loading</div>
+              <div class="schedule-item loading-skeleton">Loading</div>
+            </div>
+          </div>
+        </section>
+
+      </div>
+    </main>
+
+    <!-- ==========================================
+         VIEW 3: GLOBAL LEADERBOARD
+         ========================================== -->
+    <main id="leaderboard-section" class="view-section">
+      <div class="glass-card" style="max-width: 800px; margin: 0 auto;">
+        <h2 class="section-title" style="justify-content: center; margin-bottom: 24px;">
+          <i class="fa-solid fa-trophy" style="color: #fbbf24;"></i>
+          <span>Global Leaderboard</span>
+        </h2>
+
+        <!-- Top 3 visual podium -->
+        <div id="podium-container" class="leaderboard-podium">
+          <!-- Dynamically populated -->
+          <div class="podium-card podium-2nd">
+            <div class="podium-avatar">2</div>
+            <div class="podium-rank">2nd Place</div>
+            <div class="podium-username">---</div>
+            <div class="podium-tokens">-- tokens</div>
+          </div>
+          <div class="podium-card podium-1st">
+            <i class="fa-solid fa-crown podium-crown"></i>
+            <div class="podium-avatar">1</div>
+            <div class="podium-rank">1st Place</div>
+            <div class="podium-username">---</div>
+            <div class="podium-tokens">-- tokens</div>
+          </div>
+          <div class="podium-card podium-3rd">
+            <div class="podium-avatar">3</div>
+            <div class="podium-rank">3rd Place</div>
+            <div class="podium-username">---</div>
+            <div class="podium-tokens">-- tokens</div>
+          </div>
+        </div>
+
+        <!-- Rank 4+ list view -->
+        <div id="leaderboard-rows-container" class="leaderboard-list">
+          <!-- Dynamically populated -->
+          <div class="leaderboard-row loading-skeleton">Rank list loading...</div>
+        </div>
+      </div>
+    </main>
+
+    <!-- ==========================================
+         VIEW 4: ADMIN RESOLUTION PANEL
+         ========================================== -->
+    <main id="admin-section" class="view-section">
+      <div class="glass-card" style="max-width: 600px; margin: 0 auto;">
+        <div class="admin-header">
+          <h2 class="section-title">
+            <i class="fa-solid fa-user-shield" style="color: var(--color-error);"></i>
+            <span>Admin Resolution Control</span>
+          </h2>
+          <p style="color: var(--text-secondary); font-size: 0.9rem; margin-top: -8px; margin-bottom: 20px;">
+            Set class results here. Payout calculations, balance updates, and bet status completions are resolved server-side.
+          </p>
+        </div>
+
+        <form id="admin-resolve-form" class="admin-form">
+          <div class="form-group">
+            <label for="admin-resolve-date-select">Select Date to Resolve</label>
+            <div class="select-wrapper">
+              <select id="admin-resolve-date-select" required>
+                <option value="" disabled selected>Select class date...</option>
+                <!-- Dynamically loaded list of past/today classes -->
+              </select>
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label for="admin-actual-count-input">Actual Classroom Attendance</label>
+            <div class="input-wrapper">
+              <i class="fa-solid fa-people-group" style="position: absolute; left: 14px; top: 50%; transform: translateY(-50%); color: var(--text-muted);"></i>
+              <input type="number" id="admin-actual-count-input" class="input-field" placeholder="e.g. 45" min="0" required>
+            </div>
+          </div>
+
+          <button type="submit" id="admin-resolve-submit-btn" class="btn-danger">
+            <span>Calculate Payouts & Resolve Bets</span> <i class="fa-solid fa-calculator"></i>
+          </button>
+        </form>
+      </div>
+    </main>
+
+    <!-- ==========================================
+         FOOTER NAVIGATION BAR (Visible when logged in)
+         ========================================== -->
+    <footer id="main-footer" class="main-footer" style="display: none;">
+      <nav class="footer-nav">
+        <div id="nav-dashboard-link" class="footer-link active">
+          <i class="fa-solid fa-house"></i> Dashboard
+        </div>
+        <div id="nav-leaderboard-link" class="footer-link">
+          <i class="fa-solid fa-trophy"></i> Leaderboard
+        </div>
+      </nav>
+      <div>Class Attendance Betting Engine &copy; 2026. Powered by Supabase.</div>
+    </footer>
+
+  </div>
+
+  <!-- Supabase JS Client CDN -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  
+  <!-- Main App Script logic (ES6 Modules) -->
+  <script type="module" src="app.js"></script>
+</body>
+</html>
