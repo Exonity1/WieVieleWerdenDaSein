@@ -104,7 +104,7 @@ function createSetupModal() {
   modal.style.left = '0';
   modal.style.width = '100vw';
   modal.style.height = '100vh';
-  modal.style.background = 'rgba(10, 13, 26, 0.95)';
+  modal.style.background = 'rgba(3, 4, 7, 0.98)';
   modal.style.backdropFilter = 'blur(16px)';
   modal.style.display = 'flex';
   modal.style.alignItems = 'center';

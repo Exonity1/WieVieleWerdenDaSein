@@ -7,20 +7,20 @@
 
 :root {
   /* Colors */
-  --bg-base: #0a0d1a;
-  --bg-surface: rgba(20, 24, 46, 0.65);
-  --bg-surface-hover: rgba(30, 36, 66, 0.8);
-  --border-color: rgba(255, 255, 255, 0.08);
-  --border-color-glow: rgba(99, 102, 241, 0.25);
+  --bg-base: #030407;
+  --bg-surface: rgba(12, 12, 18, 0.85);
+  --bg-surface-hover: rgba(22, 22, 32, 0.95);
+  --border-color: rgba(255, 255, 255, 0.15);
+  --border-color-glow: rgba(255, 0, 127, 0.45);
   
-  --text-primary: #f8fafc;
-  --text-secondary: #94a3b8;
-  --text-muted: #64748b;
+  --text-primary: #ffffff;
+  --text-secondary: #cbd5e1;
+  --text-muted: #94a3b8;
   
-  --color-primary: #6366f1; /* Neon Purple-Indigo */
-  --color-primary-glow: rgba(99, 102, 241, 0.4);
-  --color-secondary: #14b8a6; /* Neon Teal */
-  --color-secondary-glow: rgba(20, 184, 166, 0.4);
+  --color-primary: #ff007f; /* Neon Pink */
+  --color-primary-glow: rgba(255, 0, 127, 0.4);
+  --color-secondary: #00f2fe; /* Neon Cyan */
+  --color-secondary-glow: rgba(0, 242, 254, 0.4);
   
   --color-success: #10b981; /* Emerald */
   --color-success-glow: rgba(16, 185, 129, 0.2);
@@ -38,7 +38,7 @@
   --radius-lg: 24px;
   --shadow-sm: 0 2px 8px rgba(0, 0, 0, 0.2);
   --shadow-md: 0 8px 32px rgba(0, 0, 0, 0.37);
-  --shadow-glow: 0 0 20px rgba(99, 102, 241, 0.15);
+  --shadow-glow: 0 0 20px rgba(255, 0, 127, 0.2);
   --transition-fast: 0.2s cubic-bezier(0.4, 0, 0.2, 1);
   --transition-normal: 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
@@ -60,8 +60,8 @@ body {
   min-height: 100vh;
   line-height: 1.5;
   background-image: 
-    radial-gradient(at 0% 0%, rgba(99, 102, 241, 0.1) 0px, transparent 50%),
-    radial-gradient(at 100% 100%, rgba(20, 184, 166, 0.1) 0px, transparent 50%);
+    radial-gradient(at 0% 0%, rgba(255, 0, 127, 0.12) 0px, transparent 50%),
+    radial-gradient(at 100% 100%, rgba(0, 242, 254, 0.08) 0px, transparent 50%);
   background-attachment: fixed;
   overflow-x: hidden;
 }
@@ -107,13 +107,13 @@ button, input, select {
 }
 
 .text-gradient-primary {
-  background: linear-gradient(135deg, #a5b4fc 0%, #818cf8 50%, #6366f1 100%);
+  background: linear-gradient(135deg, #ff9ebb 0%, #ff5c9d 50%, #ff007f 100%);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
 }
 
 .text-gradient-teal {
-  background: linear-gradient(135deg, #2dd4bf 0%, #14b8a6 100%);
+  background: linear-gradient(135deg, #a5f3fc 0%, #00f2fe 100%);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
 }
@@ -215,8 +215,8 @@ button, input, select {
 }
 
 .user-token-display {
-  background: rgba(99, 102, 241, 0.1);
-  border: 1px solid rgba(99, 102, 241, 0.2);
+  background: rgba(255, 0, 127, 0.1);
+  border: 1px solid rgba(255, 0, 127, 0.2);
   border-radius: 9999px;
   padding: 6px 16px;
   display: flex;
@@ -224,7 +224,7 @@ button, input, select {
   gap: 8px;
   font-weight: 700;
   color: var(--color-primary);
-  box-shadow: 0 0 15px rgba(99, 102, 241, 0.05);
+  box-shadow: 0 0 15px rgba(255, 0, 127, 0.05);
 }
 
 .user-token-display i {
@@ -346,19 +346,19 @@ button, input, select {
 .input-field:focus {
   outline: none;
   border-color: var(--color-primary);
-  box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.15);
+  box-shadow: 0 0 0 3px rgba(255, 0, 127, 0.2);
 }
 
 .btn-primary {
   width: 100%;
-  background: linear-gradient(135deg, var(--color-primary) 0%, #4f46e5 100%);
+  background: linear-gradient(135deg, var(--color-primary) 0%, #d9006c 100%);
   border: none;
   border-radius: var(--radius-sm);
   padding: 14px;
   font-weight: 600;
   cursor: pointer;
   transition: all var(--transition-fast);
-  box-shadow: 0 4px 12px rgba(99, 102, 241, 0.25);
+  box-shadow: 0 4px 15px rgba(255, 0, 127, 0.3);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -368,7 +368,7 @@ button, input, select {
 .btn-primary:hover {
   filter: brightness(1.1);
   transform: translateY(-1px);
-  box-shadow: 0 6px 16px rgba(99, 102, 241, 0.35);
+  box-shadow: 0 6px 20px rgba(255, 0, 127, 0.45);
 }
 
 .btn-primary:active {
@@ -498,7 +498,7 @@ button, input, select {
 
 .bet-input-box:focus-within {
   border-color: var(--color-primary);
-  box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.15);
+  box-shadow: 0 0 0 3px rgba(255, 0, 127, 0.2);
 }
 
 .bet-input-label {
