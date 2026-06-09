@@ -87,7 +87,7 @@ function initSupabase() {
     return true;
   } catch (error) {
     console.error("Supabase initialization error:", error);
-    showToast("Invalid Supabase connection credentials.", "error");
+    showToast("Ungültige Supabase-Verbindungsdaten.", "error");
     createSetupModal();
     return false;
   }
@@ -114,25 +114,25 @@ function createSetupModal() {
 
   modal.innerHTML = `
     <div class="glass-card" style="width: 100%; max-width: 500px; text-align: center;">
-      <h2 style="font-family: var(--font-title); font-size: 1.75rem; margin-bottom: 12px;" class="text-gradient-primary">Connect your Supabase</h2>
+      <h2 style="font-family: var(--font-title); font-size: 1.75rem; margin-bottom: 12px;" class="text-gradient-primary">Supabase verbinden</h2>
       <p style="color: var(--text-secondary); font-size: 0.9rem; margin-bottom: 24px;">
-        To activate the app, please paste your Supabase Project credentials. These can be found under your Supabase Project settings > API.
+        Um die App zu aktivieren, füge bitte deine Supabase-Projekt-Verbindungsdaten ein. Diese findest du in deinen Supabase-Projekteinstellungen unter Settings > API.
       </p>
       <form id="setup-form" style="display: flex; flex-direction: column; gap: 16px; text-align: left;">
         <div class="form-group">
-          <label style="font-weight:600;">Supabase Project URL</label>
-          <input type="url" id="setup-url" class="input-field" style="padding-left:14px;" placeholder="https://your-project-id.supabase.co" required>
+          <label style="font-weight:600;">Supabase-Projekt-URL</label>
+          <input type="url" id="setup-url" class="input-field" style="padding-left:14px;" placeholder="https://ihre-projekt-id.supabase.co" required>
         </div>
         <div class="form-group">
-          <label style="font-weight:600;">Supabase Anon API Key</label>
+          <label style="font-weight:600;">Supabase Anon API-Schlüssel</label>
           <input type="text" id="setup-key" class="input-field" style="padding-left:14px;" placeholder="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..." required>
         </div>
         <button type="submit" class="btn-primary" style="margin-top: 10px;">
-          Connect Application & Refresh
+          Anwendung verbinden & aktualisieren
         </button>
       </form>
       <div style="margin-top: 15px; font-size: 0.75rem; color: var(--text-muted);">
-        Credentials will be safely saved in your local browser cache (localStorage).
+        Die Zugangsdaten werden sicher in deinem lokalen Browser-Cache (localStorage) gespeichert.
       </div>
     </div>
   `;
@@ -147,7 +147,7 @@ function createSetupModal() {
     localStorage.setItem('supabase_url', url);
     localStorage.setItem('supabase_anon_key', key);
     
-    showToast("Supabase credentials saved successfully!", "success");
+    showToast("Supabase-Zugangsdaten erfolgreich gespeichert!", "success");
     setTimeout(() => window.location.reload(), 1000);
   });
 }
@@ -204,18 +204,18 @@ function setupViewNavigation() {
       // Switch to Register
       document.getElementById('login-form').style.display = 'none';
       document.getElementById('register-form').style.display = 'block';
-      document.getElementById('auth-title').innerText = "Create Account";
-      document.getElementById('auth-description').innerText = "Join the pool and get 100 free tokens!";
-      document.getElementById('auth-toggle-prompt').innerText = "Already have an account?";
-      authToggleLink.innerText = "Sign In";
+      document.getElementById('auth-title').innerText = "Konto erstellen";
+      document.getElementById('auth-description').innerText = "Mach mit und sichere dir 100 kostenlose Tokens!";
+      document.getElementById('auth-toggle-prompt').innerText = "Bereits ein Konto?";
+      authToggleLink.innerText = "Einloggen";
     } else {
       // Switch to Login
       document.getElementById('login-form').style.display = 'block';
       document.getElementById('register-form').style.display = 'none';
-      document.getElementById('auth-title').innerText = "Welcome Back";
-      document.getElementById('auth-description').innerText = "Sign in to place your daily attendance guess!";
-      document.getElementById('auth-toggle-prompt').innerText = "Don't have an account?";
-      authToggleLink.innerText = "Sign Up";
+      document.getElementById('auth-title').innerText = "Willkommen zurück";
+      document.getElementById('auth-description').innerText = "Melde dich an, um deinen täglichen Anwesenheitstipp abzugeben!";
+      document.getElementById('auth-toggle-prompt').innerText = "Noch kein Konto?";
+      authToggleLink.innerText = "Registrieren";
     }
   });
 }
@@ -230,16 +230,16 @@ async function handleLogin(e) {
   const submitBtn = document.getElementById('login-submit-btn');
 
   submitBtn.disabled = true;
-  submitBtn.innerHTML = `Connecting... <i class="fa-solid fa-spinner fa-spin"></i>`;
+  submitBtn.innerHTML = `Verbinde... <i class="fa-solid fa-spinner fa-spin"></i>`;
 
   const { data, error } = await supabase.auth.signInWithPassword({ email, password });
 
   if (error) {
     showToast(error.message, 'error');
     submitBtn.disabled = false;
-    submitBtn.innerHTML = `<span>Sign In</span> <i class="fa-solid fa-right-to-bracket"></i>`;
+    submitBtn.innerHTML = `<span>Einloggen</span> <i class="fa-solid fa-right-to-bracket"></i>`;
   } else {
-    showToast("Signed in successfully!", "success");
+    showToast("Erfolgreich angemeldet!", "success");
     // Manual fallback to guarantee instant UI update
     if (data && data.session) {
       await onSessionChanged(data.session);
@@ -255,7 +255,7 @@ async function handleRegister(e) {
   const submitBtn = document.getElementById('register-submit-btn');
 
   submitBtn.disabled = true;
-  submitBtn.innerHTML = `Registering... <i class="fa-solid fa-spinner fa-spin"></i>`;
+  submitBtn.innerHTML = `Registriere... <i class="fa-solid fa-spinner fa-spin"></i>`;
 
   const { data, error } = await supabase.auth.signUp({
     email,
@@ -268,9 +268,9 @@ async function handleRegister(e) {
   if (error) {
     showToast(error.message, 'error');
     submitBtn.disabled = false;
-    submitBtn.innerHTML = `<span>Create Account</span> <i class="fa-solid fa-user-plus"></i>`;
+    submitBtn.innerHTML = `<span>Konto erstellen</span> <i class="fa-solid fa-user-plus"></i>`;
   } else {
-    showToast("Registration successful! Logging in...", "success");
+    showToast("Registrierung erfolgreich! Anmeldung...", "success");
     // Manual fallback to guarantee instant UI update
     if (data && data.session) {
       await onSessionChanged(data.session);
@@ -283,7 +283,7 @@ async function handleLogout() {
   if (error) {
     showToast(error.message, 'error');
   } else {
-    showToast("Logged out successfully.", "info");
+    showToast("Erfolgreich abgemeldet.", "info");
   }
 }
 
@@ -322,7 +322,7 @@ async function onSessionChanged(session) {
       
     if (!profile) {
       console.error("Error loading profile after retries:", profileError);
-      showToast("Error loading profile details: " + (profileError ? `${profileError.message} (Code: ${profileError.code})` : "Not found in database"), "error");
+      showToast("Fehler beim Laden der Profildaten: " + (profileError ? `${profileError.message} (Code: ${profileError.code})` : "In der Datenbank nicht gefunden"), "error");
       return;
     }
     
@@ -330,7 +330,7 @@ async function onSessionChanged(session) {
     
     try {
       // Safe fallback for username
-      const username = profile.username || currentUser.email.split('@')[0] || "User";
+      const username = profile.username || currentUser.email.split('@')[0] || "Benutzer";
       
       // Update Header UI details
       document.getElementById('user-tokens-val').innerText = profile.tokens;
@@ -356,7 +356,7 @@ async function onSessionChanged(session) {
       }
     } catch (uiError) {
       console.error("UI rendering error:", uiError);
-      showToast("UI Rendering failed: " + uiError.message, "error");
+      showToast("Fehler beim Rendern der Benutzeroberfläche: " + uiError.message, "error");
     }
   } else {
     // Reset session variables
@@ -380,9 +380,9 @@ async function onSessionChanged(session) {
     document.getElementById('login-form').reset();
     document.getElementById('register-form').reset();
     document.getElementById('login-submit-btn').disabled = false;
-    document.getElementById('login-submit-btn').innerHTML = `<span>Sign In</span> <i class="fa-solid fa-right-to-bracket"></i>`;
+    document.getElementById('login-submit-btn').innerHTML = `<span>Einloggen</span> <i class="fa-solid fa-right-to-bracket"></i>`;
     document.getElementById('register-submit-btn').disabled = false;
-    document.getElementById('register-submit-btn').innerHTML = `<span>Create Account</span> <i class="fa-solid fa-user-plus"></i>`;
+    document.getElementById('register-submit-btn').innerHTML = `<span>Konto erstellen</span> <i class="fa-solid fa-user-plus"></i>`;
   }
 }
 
@@ -413,10 +413,12 @@ function getActiveBettingClass() {
           timeZone: 'Europe/Berlin' 
         });
         return {
+          id: item.id,
           date: item.class_date,
           time: formattedTime,
           deadlineTimestamp: deadlineTime,
-          classTimestamp: classTime.getTime()
+          classTimestamp: classTime.getTime(),
+          subject: item.subject
         };
       }
     }
@@ -431,11 +433,13 @@ function getActiveBettingClass() {
         timeZone: 'Europe/Berlin' 
       });
       return {
+        id: nextClass.id,
         date: nextClass.class_date,
         time: formattedTime,
         deadlineTimestamp: classTime.getTime() - (20 * 60 * 1000),
         classTimestamp: classTime.getTime(),
-        allPast: true
+        allPast: true,
+        subject: nextClass.subject
       };
     }
   }
@@ -454,9 +458,9 @@ function startCountdown() {
     if (!isScheduleLoaded) {
       timerElement.innerText = "--h --m --s";
       timerElement.className = "countdown-timer loading";
-      dateSubElement.innerText = "Loading schedule...";
+      dateSubElement.innerText = "Lade Stundenplan...";
     } else {
-      timerElement.innerText = "No Class Scheduled";
+      timerElement.innerText = "Kein Unterricht geplant";
       timerElement.className = "countdown-timer expired";
       dateSubElement.innerText = "";
     }
@@ -470,21 +474,21 @@ function startCountdown() {
   timerElement.classList.remove('loading');
   
   if (currentActiveBettingClass.allPast) {
-    timerElement.innerText = "Closed";
+    timerElement.innerText = "Geschlossen";
     timerElement.className = "countdown-timer expired";
-    dateSubElement.innerText = `All betting pools locked (${displayDateStr} @ ${currentActiveBettingClass.time})`;
+    dateSubElement.innerText = `Alle Tipprunden gesperrt (${currentActiveBettingClass.subject || 'Unterricht'} am ${displayDateStr} um ${currentActiveBettingClass.time})`;
     document.getElementById('bet-submit-btn').disabled = true;
     return;
   }
   
-  dateSubElement.innerText = `For class on: ${displayDateStr} at ${currentActiveBettingClass.time}`;
+  dateSubElement.innerText = `Für ${currentActiveBettingClass.subject || 'Unterricht'} am ${displayDateStr} um ${currentActiveBettingClass.time}`;
   
   function updateTimer() {
     const timeLeft = currentActiveBettingClass.deadlineTimestamp - Date.now();
     
     if (timeLeft <= 0) {
       clearInterval(countdownInterval);
-      timerElement.innerText = "Closed";
+      timerElement.innerText = "Geschlossen";
       timerElement.className = "countdown-timer expired";
       document.getElementById('bet-submit-btn').disabled = true;
       // Hot reload active state
@@ -526,7 +530,7 @@ async function loadDashboardData() {
       
     if (profileErr) {
       console.error("Error updating profile tokens:", profileErr);
-      showToast("Error updating token balance: " + profileErr.message, "error");
+      showToast("Fehler beim Aktualisieren des Kontostands: " + profileErr.message, "error");
     } else if (updatedProfile) {
       currentProfile.tokens = updatedProfile.tokens;
       document.getElementById('user-tokens-val').innerText = updatedProfile.tokens;
@@ -540,7 +544,7 @@ async function loadDashboardData() {
       
     if (betsErr) {
       console.error("Error loading user bets:", betsErr);
-      showToast("Error retrieving betting history: " + betsErr.message, "error");
+      showToast("Fehler beim Abrufen des Schätzverlaufs: " + betsErr.message, "error");
       return;
     }
     userBets = bets || [];
@@ -559,7 +563,7 @@ async function loadDashboardData() {
       
     if (schedErr) {
       console.error("Error loading schedule:", schedErr);
-      showToast("Error retrieving class schedule: " + schedErr.message, "error");
+      showToast("Fehler beim Abrufen des Stundenplans: " + schedErr.message, "error");
       return;
     }
     dbSchedule = schedule || [];
@@ -573,7 +577,7 @@ async function loadDashboardData() {
     renderScheduleTimeline();
   } catch (dashboardErr) {
     console.error("Dashboard processing failure:", dashboardErr);
-    showToast("Dashboard loading failed: " + dashboardErr.message, "error");
+    showToast("Fehler beim Laden des Dashboards: " + dashboardErr.message, "error");
   }
 }
 
@@ -584,19 +588,31 @@ function renderActiveBettingState() {
     return;
   }
 
-  // Search if the user has already bet on this active class date
-  const todaysBet = userBets.find(b => b.bet_date === currentActiveBettingClass.date);
+  // Search if the user has already bet on this active class ID
+  const todaysBet = userBets.find(b => b.class_id === currentActiveBettingClass.id);
 
   if (todaysBet) {
     // Already placed bet: Display placed bet info card
     document.getElementById('bet-input-form').style.display = 'none';
     document.getElementById('placed-bet-info').style.display = 'flex';
     document.getElementById('placed-bet-val').innerText = todaysBet.guess;
+    
+    // Update placed bet info text with class details
+    const textLabel = document.querySelector('#placed-bet-info p');
+    if (textLabel) {
+      textLabel.innerText = `Deine Schätzung für ${currentActiveBettingClass.subject || 'Unterricht'}:`;
+    }
   } else {
     // No bet placed yet: Display bet input form
     document.getElementById('bet-input-form').style.display = 'flex';
     document.getElementById('placed-bet-info').style.display = 'none';
     document.getElementById('bet-guess-input').value = '';
+    
+    // Dynamically update the cost/subject info tag
+    const costTag = document.querySelector('#bet-input-form .bet-cost-tag');
+    if (costTag) {
+      costTag.innerHTML = `<i class="fa-solid fa-circle-info"></i> Der Tipp für <strong>${currentActiveBettingClass.subject || 'Unterricht'}</strong> ist kostenlos.`;
+    }
     
     // Disable form submission if deadline has passed
     const isDeadlinePassed = Date.now() >= currentActiveBettingClass.deadlineTimestamp;
@@ -609,15 +625,15 @@ function renderScheduleTimeline() {
   if (!container) return;
   
   if (dbSchedule.length === 0) {
-    container.innerHTML = `<div class="schedule-item" style="justify-content:center; color:var(--text-muted);">No schedule seeded in the database.</div>`;
+    container.innerHTML = `<div class="schedule-item" style="justify-content:center; color:var(--text-muted);">Kein Stundenplan in der Datenbank vorhanden.</div>`;
     return;
   }
   
   container.innerHTML = '';
   
   dbSchedule.forEach(item => {
-    // Match matching user bet
-    const bet = userBets.find(b => b.bet_date === item.class_date);
+    // Match matching user bet by class_id
+    const bet = userBets.find(b => b.class_id === item.id);
     
     const classDateParts = item.class_date.split('-');
     const formattedDate = `${classDateParts[2]}.${classDateParts[1]}.${classDateParts[0]}`;
@@ -638,16 +654,16 @@ function renderScheduleTimeline() {
     if (item.is_resolved) {
       if (bet) {
         if (bet.status === 'won') {
-          badgeHtml = `<span class="badge badge-won"><i class="fa-solid fa-circle-check"></i> Won</span>`;
+          badgeHtml = `<span class="badge badge-won"><i class="fa-solid fa-circle-check"></i> Gewonnen</span>`;
           payoutHtml = `<span class="schedule-actual-payout">+${bet.payout} Tokens</span>`;
         } else {
-          badgeHtml = `<span class="badge badge-lost"><i class="fa-solid fa-circle-xmark"></i> Lost</span>`;
+          badgeHtml = `<span class="badge badge-lost"><i class="fa-solid fa-circle-xmark"></i> Kein Gewinn</span>`;
           payoutHtml = `<span class="schedule-actual-payout" style="color:var(--color-error);">0 Tokens</span>`;
         }
-        guessDetailHtml = `<div class="schedule-guess-badge">Guessed: <span>${bet.guess}</span> (Actual: ${item.actual_attendance})</div>`;
+        guessDetailHtml = `<div class="schedule-guess-badge">Tipp: <span>${bet.guess}</span> (Tatsächlich: ${item.actual_attendance})</div>`;
       } else {
-        badgeHtml = `<span class="badge badge-locked"><i class="fa-solid fa-ban"></i> No Bet</span>`;
-        guessDetailHtml = `<div class="schedule-guess-badge">Actual Attendance: <span>${item.actual_attendance}</span></div>`;
+        badgeHtml = `<span class="badge badge-locked"><i class="fa-solid fa-ban"></i> Kein Tipp</span>`;
+        guessDetailHtml = `<div class="schedule-guess-badge">Tatsächliche Anwesenheit: <span>${item.actual_attendance}</span></div>`;
       }
     } else {
       // Unresolved: Check if betting time limit is active
@@ -655,18 +671,18 @@ function renderScheduleTimeline() {
       const isLocked = Date.now() >= deadline;
       
       if (isLocked) {
-        badgeHtml = `<span class="badge badge-locked"><i class="fa-solid fa-lock"></i> Locked</span>`;
+        badgeHtml = `<span class="badge badge-locked"><i class="fa-solid fa-lock"></i> Gesperrt</span>`;
         if (bet) {
-          guessDetailHtml = `<div class="schedule-guess-badge">Guessed: <span>${bet.guess}</span> (Awaiting outcome)</div>`;
+          guessDetailHtml = `<div class="schedule-guess-badge">Tipp: <span>${bet.guess}</span> (Wartet auf Auswertung)</div>`;
         } else {
-          guessDetailHtml = `<div class="schedule-guess-badge" style="color:var(--color-error);">Missed deadline</div>`;
+          guessDetailHtml = `<div class="schedule-guess-badge" style="color:var(--color-error);">Frist verpasst</div>`;
         }
       } else {
-        badgeHtml = `<span class="badge badge-pending"><i class="fa-solid fa-clock"></i> Open</span>`;
+        badgeHtml = `<span class="badge badge-pending"><i class="fa-solid fa-clock"></i> Offen</span>`;
         if (bet) {
-          guessDetailHtml = `<div class="schedule-guess-badge">Guessed: <span>${bet.guess}</span></div>`;
+          guessDetailHtml = `<div class="schedule-guess-badge">Tipp: <span>${bet.guess}</span></div>`;
         } else {
-          guessDetailHtml = `<div class="schedule-guess-badge" style="color:var(--text-muted);">No bet placed yet</div>`;
+          guessDetailHtml = `<div class="schedule-guess-badge" style="color:var(--text-muted);">Noch kein Tipp abgegeben</div>`;
         }
       }
     }
@@ -675,6 +691,7 @@ function renderScheduleTimeline() {
     itemEl.className = 'schedule-item';
     itemEl.innerHTML = `
       <div class="schedule-date-info">
+        <span class="schedule-subject" style="font-weight: 600; color: var(--color-secondary); font-size: 0.95rem; display: block; margin-bottom: 2px;">${item.subject || 'Unterricht'}</span>
         <span class="schedule-date">${formattedDate}</span>
         <span class="schedule-time"><i class="fa-regular fa-clock"></i> ${formattedTime}</span>
       </div>
@@ -706,7 +723,7 @@ async function loadLeaderboardData() {
     
   if (error) {
     console.error("Error fetching leaderboard:", error);
-    showToast("Error loading global rankings.", "error");
+    showToast("Fehler beim Laden der globalen Rangliste.", "error");
     return;
   }
   
@@ -714,9 +731,9 @@ async function loadLeaderboardData() {
   
   // Render Podium (Top 3)
   const podiumHTML = {
-    first: { username: 'Empty', tokens: '0' },
-    second: { username: 'Empty', tokens: '0' },
-    third: { username: 'Empty', tokens: '0' }
+    first: { username: 'Leer', tokens: '0' },
+    second: { username: 'Leer', tokens: '0' },
+    third: { username: 'Leer', tokens: '0' }
   };
   
   if (rankList.length > 0) podiumHTML.first = rankList[0];
@@ -727,7 +744,7 @@ async function loadLeaderboardData() {
     <!-- 2nd Place -->
     <div class="podium-card podium-2nd">
       <div class="podium-avatar">${podiumHTML.second.username.charAt(0).toUpperCase()}</div>
-      <div class="podium-rank">2nd Place</div>
+      <div class="podium-rank">2. Platz</div>
       <div class="podium-username" title="${podiumHTML.second.username}">${podiumHTML.second.username}</div>
       <div class="podium-tokens"><i class="fa-solid fa-coins"></i> ${podiumHTML.second.tokens}</div>
     </div>
@@ -738,7 +755,7 @@ async function loadLeaderboardData() {
       <div class="podium-avatar" style="width: 76px; height: 76px; font-size: 1.8rem; margin-top: -10px;">
         ${podiumHTML.first.username.charAt(0).toUpperCase()}
       </div>
-      <div class="podium-rank">1st Place</div>
+      <div class="podium-rank">1. Platz</div>
       <div class="podium-username" title="${podiumHTML.first.username}" style="font-size: 1.25rem;">${podiumHTML.first.username}</div>
       <div class="podium-tokens" style="font-size:1.1rem;"><i class="fa-solid fa-coins" style="color:#fbbf24;"></i> ${podiumHTML.first.tokens}</div>
     </div>
@@ -746,7 +763,7 @@ async function loadLeaderboardData() {
     <!-- 3rd Place -->
     <div class="podium-card podium-3rd">
       <div class="podium-avatar">${podiumHTML.third.username.charAt(0).toUpperCase()}</div>
-      <div class="podium-rank">3rd Place</div>
+      <div class="podium-rank">3. Platz</div>
       <div class="podium-username" title="${podiumHTML.third.username}">${podiumHTML.third.username}</div>
       <div class="podium-tokens"><i class="fa-solid fa-coins"></i> ${podiumHTML.third.tokens}</div>
     </div>
@@ -756,7 +773,7 @@ async function loadLeaderboardData() {
   listContainer.innerHTML = '';
   
   if (rankList.length <= 3) {
-    listContainer.innerHTML = `<div class="leaderboard-row" style="justify-content:center; color:var(--text-muted);">No additional rank listings.</div>`;
+    listContainer.innerHTML = `<div class="leaderboard-row" style="justify-content:center; color:var(--text-muted);">Keine weiteren Platzierungen.</div>`;
     return;
   }
   
@@ -791,17 +808,17 @@ async function loadAdminData() {
   if (!select) return;
 
   // Clear older entries
-  select.innerHTML = '<option value="" disabled selected>Select class date...</option>';
+  select.innerHTML = '<option value="" disabled selected>Wähle das Datum des Unterrichts...</option>';
 
   // Load unresolved classes from the database schedule list
   const { data: schedule, error } = await supabase
     .from('schedule')
-    .select('class_date, is_resolved')
-    .order('class_date', { ascending: false });
+    .select('id, class_date, class_time, is_resolved, subject')
+    .order('class_time', { ascending: false });
     
   if (error) {
     console.error("Error fetching admin schedule:", error);
-    showToast("Error loading schedule list.", "error");
+    showToast("Fehler beim Laden des Stundenplans.", "error");
     return;
   }
   
@@ -811,11 +828,18 @@ async function loadAdminData() {
   openScheduleList.forEach(item => {
     if (!item.is_resolved) {
       const dateParts = item.class_date.split('-');
-      const formatted = `${dateParts[2]}.${dateParts[1]}.${dateParts[0]}`;
+      const formattedDate = `${dateParts[2]}.${dateParts[1]}.${dateParts[0]}`;
+      
+      const rawTime = new Date(item.class_time);
+      const formattedTime = rawTime.toLocaleTimeString('de-DE', { 
+        hour: '2-digit', 
+        minute: '2-digit', 
+        timeZone: 'Europe/Berlin' 
+      });
       
       const option = document.createElement('option');
-      option.value = item.class_date;
-      option.innerText = `${formatted} (Unresolved)`;
+      option.value = item.id;
+      option.innerText = `${formattedDate} um ${formattedTime} - ${item.subject || 'Unterricht'} (Nicht ausgewertet)`;
       select.appendChild(option);
       openCount++;
     }
@@ -824,7 +848,7 @@ async function loadAdminData() {
   if (openCount === 0) {
     const option = document.createElement('option');
     option.disabled = true;
-    option.innerText = "No unresolved class schedules found.";
+    option.innerText = "Keine ungelösten Stundenpläne gefunden.";
     select.appendChild(option);
   }
 }
@@ -836,7 +860,7 @@ async function placeBetHandler(e) {
   e.preventDefault();
   
   if (!currentActiveBettingClass) {
-    showToast("No active betting session currently open.", "error");
+    showToast("Derzeit ist keine Tipprunde geöffnet.", "error");
     return;
   }
 
@@ -845,25 +869,25 @@ async function placeBetHandler(e) {
   const submitBtn = document.getElementById('bet-submit-btn');
 
   if (isNaN(guessVal) || guessVal < 0) {
-    showToast("Please enter a valid attendance guess (0 or more).", "error");
+    showToast("Bitte gib eine gültige Schätzung ein (0 oder mehr).", "error");
     return;
   }
 
   submitBtn.disabled = true;
-  submitBtn.innerHTML = `Securing... <i class="fa-solid fa-spinner fa-spin"></i>`;
+  submitBtn.innerHTML = `Speichert... <i class="fa-solid fa-spinner fa-spin"></i>`;
 
-  // Place bet via RPC on Supabase (deducts tokens, locks time check, saves bet server side)
+  // Place bet via RPC on Supabase referencing class_id
   const { data: newBalance, error } = await supabase.rpc('place_bet', {
-    target_date: currentActiveBettingClass.date,
+    target_class_id: currentActiveBettingClass.id,
     guessed_amount: guessVal
   });
 
   if (error) {
     showToast(error.message, 'error');
     submitBtn.disabled = false;
-    submitBtn.innerHTML = `<span>Lock In Bet</span> <i class="fa-solid fa-lock-open"></i>`;
+    submitBtn.innerHTML = `<span>Tipp abgeben</span> <i class="fa-solid fa-lock-open"></i>`;
   } else {
-    showToast("Bet successfully registered! 10 Tokens locked.", "success");
+    showToast("Tipp erfolgreich registriert! Viel Glück!", "success");
     // Reload token balance & dashboard UI state
     currentProfile.tokens = newBalance;
     document.getElementById('user-tokens-val').innerText = newBalance;
@@ -875,36 +899,36 @@ async function resolveBetsHandler(e) {
   e.preventDefault();
 
   const select = document.getElementById('admin-resolve-date-select');
-  const selectedDate = select.value;
+  const selectedClassId = parseInt(select.value);
   const actualCountInput = document.getElementById('admin-actual-count-input');
   const actualCount = parseInt(actualCountInput.value);
   const submitBtn = document.getElementById('admin-resolve-submit-btn');
 
-  if (!selectedDate) {
-    showToast("Please select a date to resolve.", "error");
+  if (!selectedClassId || isNaN(selectedClassId)) {
+    showToast("Bitte wähle ein Datum zum Auswerten aus.", "error");
     return;
   }
 
   if (isNaN(actualCount) || actualCount < 0) {
-    showToast("Please enter a valid attendance number.", "error");
+    showToast("Bitte gib eine gültige Anwesenheitszahl ein.", "error");
     return;
   }
 
   submitBtn.disabled = true;
-  submitBtn.innerHTML = `Resolving & Awarding... <i class="fa-solid fa-spinner fa-spin"></i>`;
+  submitBtn.innerHTML = `Wird ausgewertet... <i class="fa-solid fa-spinner fa-spin"></i>`;
 
-  // Resolve bets via Stored Procedure RPC on Supabase
+  // Resolve bets via Stored Procedure RPC on Supabase referencing target_class_id
   const { data: resolvedBetsCount, error } = await supabase.rpc('resolve_bets', {
     actual_number: actualCount,
-    target_date: selectedDate
+    target_class_id: selectedClassId
   });
 
   if (error) {
     showToast(error.message, 'error');
     submitBtn.disabled = false;
-    submitBtn.innerHTML = `<span>Calculate Payouts & Resolve Bets</span> <i class="fa-solid fa-calculator"></i>`;
+    submitBtn.innerHTML = `<span>Gewinne berechnen & Tipps auswerten</span> <i class="fa-solid fa-calculator"></i>`;
   } else {
-    showToast(`Successfully resolved ${resolvedBetsCount} bets! Payouts applied.`, "success");
+    showToast(`Erfolgreich ${resolvedBetsCount} Tipps ausgewertet! Gewinne wurden gutgeschrieben.`, "success");
     
     // Clear admin form inputs
     actualCountInput.value = '';
@@ -947,7 +971,7 @@ function mountApp() {
     console.log("Auth event fired:", event);
     onSessionChanged(session).catch(err => {
       console.error("Auth state change callback error:", err);
-      showToast("Session transition error: " + err.message, "error");
+      showToast("Sitzungsübergangsfehler: " + err.message, "error");
     });
   });
 }

@@ -28,8 +28,10 @@ alter table public.profiles enable row level security;
 -- 2. SCHEDULE TABLE
 -- Stores the schedule of classes, times, and resolutions.
 create table public.schedule (
-  class_date date primary key,
+  id bigint generated always as identity primary key,
+  class_date date not null,
   class_time timestamptz not null,
+  subject text not null default 'Unterricht',
   is_resolved boolean not null default false,
   actual_attendance integer check (actual_attendance >= 0),
   created_at timestamptz not null default timezone('utc'::text, now())
@@ -43,12 +45,12 @@ alter table public.schedule enable row level security;
 create table public.bets (
   id bigint generated always as identity primary key,
   user_id uuid not null references public.profiles(id) on delete cascade,
-  bet_date date not null references public.schedule(class_date) on delete cascade,
+  class_id bigint not null references public.schedule(id) on delete cascade,
   guess integer not null check (guess >= 0),
   status text not null default 'pending' check (status in ('pending', 'won', 'lost')),
   payout integer not null default 0 check (payout >= 0),
   created_at timestamptz not null default timezone('utc'::text, now()),
-  constraint unique_user_date_bet unique (user_id, bet_date)
+  constraint unique_user_class_bet unique (user_id, class_id)
 );
 
 -- Enable Row Level Security
@@ -139,12 +141,12 @@ create or replace trigger on_auth_user_created
 -- ==========================================
 
 -- RPC 1: PLACE A BET
--- Checks user balance, enforces 5-minute time lock, deducts 10 tokens, and inserts bet.
+-- Enforces 20-minute time lock, saves bet server side, and returns current token balance.
 create or replace function public.place_bet(
-  target_date date,
+  target_class_id bigint,
   guessed_amount integer
 )
-returns integer -- Returns new token balance
+returns integer -- Returns current token balance
 language plpgsql
 security definer -- Runs with database owner privileges, bypassing RLS to insert/update
 set search_path = public
@@ -158,58 +160,47 @@ begin
   -- 1. Verify Authentication
   user_id_val := auth.uid();
   if user_id_val is null then
-    raise exception 'Not authenticated';
+    raise exception 'Nicht angemeldet';
   end if;
 
   -- 2. Validate input
   if guessed_amount < 0 then
-    raise exception 'Guess must be a non-negative integer';
+    raise exception 'Die Schätzung muss eine nicht-negative ganze Zahl sein';
   end if;
 
-  -- 3. Lock user profile row for update to prevent race conditions / double spends
+  -- 3. Fetch user profile tokens
   select tokens into user_tokens 
   from public.profiles 
   where id = user_id_val 
   for update;
 
   if user_tokens is null then
-    raise exception 'User profile not found';
+    raise exception 'Benutzerprofil nicht gefunden';
   end if;
 
-  -- 4. Check token balance
-  if user_tokens < 10 then
-    raise exception 'Insufficient tokens. Placing a bet costs 10 tokens.';
-  end if;
-
-  -- 5. Fetch class schedule details
+  -- 4. Fetch class schedule details by ID
   select class_time, is_resolved into class_start_time, class_resolved
   from public.schedule
-  where class_date = target_date;
+  where id = target_class_id;
 
   if class_start_time is null then
-    raise exception 'No class is scheduled for this date';
+    raise exception 'Für diesen Unterricht ist kein Termin geplant';
   end if;
 
   if class_resolved then
-    raise exception 'Class has already been resolved';
+    raise exception 'Dieser Unterricht wurde bereits ausgewertet';
   end if;
 
-  -- 6. Enforce 20-minute time lock
-  -- Database local time (now()) compared against (class_time - 20 minutes)
+  -- 5. Enforce 20-minute time lock
   if now() > (class_start_time - interval '20 minutes') then
-    raise exception 'Betting is closed for this class (deadline was 20 minutes before start)';
+    raise exception 'Die Tipprunde für diesen Unterricht ist geschlossen (Frist war 20 Minuten vor Beginn)';
   end if;
 
-  -- 7. Deduct 10 tokens
-  update public.profiles
-  set tokens = tokens - 10
-  where id = user_id_val;
+  -- 6. Insert bet referencing class_id
+  insert into public.bets (user_id, class_id, guess, status, payout)
+  values (user_id_val, target_class_id, guessed_amount, 'pending', 0);
 
-  -- 8. Insert bet (unique constraint prevents duplicate bet date per user)
-  insert into public.bets (user_id, bet_date, guess, status, payout)
-  values (user_id_val, target_date, guessed_amount, 'pending', 0);
-
-  return (user_tokens - 10);
+  return user_tokens;
 end;
 $$;
 
@@ -218,7 +209,7 @@ $$;
 -- Allows admin to set actual attendance and calculates payouts.
 create or replace function public.resolve_bets(
   actual_number integer,
-  target_date date
+  target_class_id bigint
 )
 returns integer -- Returns number of bets resolved
 language plpgsql
@@ -236,7 +227,7 @@ begin
   -- 1. Verify caller is authenticated
   caller_id := auth.uid();
   if caller_id is null then
-    raise exception 'Not authenticated';
+    raise exception 'Nicht angemeldet';
   end if;
 
   -- 2. Verify caller is an admin
@@ -245,30 +236,30 @@ begin
   where id = caller_id;
 
   if caller_is_admin is not true then
-    raise exception 'Unauthorized. Only admins can resolve bets.';
+    raise exception 'Nicht autorisiert. Nur Admins können Tipps auswerten.';
   end if;
 
   -- 3. Validate inputs
   if actual_number < 0 then
-    raise exception 'Actual attendance must be non-negative';
+    raise exception 'Die tatsächliche Anwesenheit darf nicht negativ sein';
   end if;
 
   -- Verify schedule entry exists
-  if not exists (select 1 from public.schedule where class_date = target_date) then
-    raise exception 'No class scheduled on this date';
+  if not exists (select 1 from public.schedule where id = target_class_id) then
+    raise exception 'Kein Unterricht mit dieser ID gefunden';
   end if;
 
   -- 4. Update the schedule details
   update public.schedule
   set is_resolved = true,
       actual_attendance = actual_number
-  where class_date = target_date;
+  where id = target_class_id;
 
-  -- 5. Loop and process all pending bets for this date
+  -- 5. Loop and process all pending bets for this class
   for bet_record in 
     select id, user_id, guess 
     from public.bets 
-    where bet_date = target_date and status = 'pending'
+    where class_id = target_class_id and status = 'pending'
   loop
     -- Calculate absolute difference (distance)
     diff := abs(bet_record.guess - actual_number);
@@ -313,19 +304,21 @@ $$;
 -- Make sure to seed dates beginning from 2026-06-08
 -- Users can guess and place bets on these dates.
 
-insert into public.schedule (class_date, class_time) values
-  ('2026-06-07', '2026-06-07 22:37:00+02'),
-  ('2026-06-08', '2026-06-08 13:30:00+02'),
-  ('2026-06-09', '2026-06-09 09:30:00+02'),
-  ('2026-06-10', '2026-06-10 09:15:00+02'),
-  ('2026-06-11', '2026-06-11 14:00:00+02'),
-  ('2026-06-12', '2026-06-12 11:00:00+02'),
-  ('2026-06-15', '2026-06-15 13:30:00+02'),
-  ('2026-06-16', '2026-06-16 08:30:00+02'),
-  ('2026-06-17', '2026-06-17 09:15:00+02'),
-  ('2026-06-18', '2026-06-18 14:00:00+02'),
-  ('2026-06-19', '2026-06-19 08:15:00+02')
-on conflict (class_date) do update set class_time = excluded.class_time;
+insert into public.schedule (class_date, class_time, subject) values
+  ('2026-06-07', '2026-06-07 22:37:00+02', 'Testkurs'),
+  ('2026-06-08', '2026-06-08 13:30:00+02', 'Preventive Security'),
+  ('2026-06-09', '2026-06-09 09:30:00+02', 'Softwarequalität'),
+  ('2026-06-10', '2026-06-10 09:15:00+02', 'Statistik'),
+  ('2026-06-11', '2026-06-11 14:00:00+02', 'IT-Sicherheit'),
+  ('2026-06-12', '2026-06-12 11:00:00+02', 'Praxis der Softwareentwicklung'),
+  ('2026-06-15', '2026-06-15 13:30:00+02', 'Preventive Security'),
+  ('2026-06-16', '2026-06-16 08:30:00+02', 'Softwarequalität'),
+  ('2026-06-16', '2026-06-16 12:15:00+02', 'Praxis der Softwareentwicklung'),
+  ('2026-06-17', '2026-06-17 09:15:00+02', 'Statistik'),
+  ('2026-06-18', '2026-06-18 14:00:00+02', 'IT-Sicherheit'),
+  ('2026-06-19', '2026-06-19 08:15:00+02', 'Statistik'),
+  ('2026-06-19', '2026-06-19 11:00:00+02', 'Praxis der Softwareentwicklung')
+on conflict (id) do nothing;
 
 
 -- ==========================================
@@ -339,9 +332,9 @@ grant select on public.bets to authenticated;
 
 -- Revoke default PUBLIC execution permissions on SECURITY DEFINER functions to prevent anon/unauthorized execution
 revoke execute on function public.handle_new_user() from public, anon, authenticated;
-revoke execute on function public.place_bet(date, integer) from public, anon, authenticated;
-revoke execute on function public.resolve_bets(integer, date) from public, anon, authenticated;
+revoke execute on function public.place_bet(bigint, integer) from public, anon, authenticated;
+revoke execute on function public.resolve_bets(integer, bigint) from public, anon, authenticated;
 
 -- Grant execution explicitly to the authorized roles
-grant execute on function public.place_bet(date, integer) to authenticated;
-grant execute on function public.resolve_bets(integer, date) to authenticated;
+grant execute on function public.place_bet(bigint, integer) to authenticated;
+grant execute on function public.resolve_bets(integer, bigint) to authenticated;

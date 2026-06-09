@@ -18,6 +18,8 @@ declare
   locked_class_time timestamptz;
   student_tokens_before integer;
   student_tokens_after integer;
+  test_class_id bigint;
+  locked_class_id bigint;
 begin
   raise notice '=== STARTING ATTENDANCE BETTING SECURITY TESTS ===';
 
@@ -38,12 +40,14 @@ begin
 
   -- Seed a future class (open for betting)
   insert into public.schedule (class_date, class_time, is_resolved)
-  values (test_class_date, test_class_time, false);
+  values (test_class_date, test_class_time, false)
+  returning id into test_class_id;
 
   -- Seed a class starting in 15 minutes (locked for betting)
   locked_class_time := now() + interval '15 minutes';
   insert into public.schedule (class_date, class_time, is_resolved)
-  values (locked_class_date, locked_class_time, false);
+  values (locked_class_date, locked_class_time, false)
+  returning id into locked_class_id;
 
 
   -- ----------------------------------------------------
@@ -53,18 +57,18 @@ begin
   perform set_config('role', 'authenticated', true);
   perform set_config('request.jwt.claims', json_build_object('sub', student_id::text)::text, true);
 
-  -- Verify placing a valid bet deducts tokens and registers
-  raise notice 'Test 1: Placing a valid bet...';
+  -- Verify placing a valid bet does not deduct tokens and registers
+  raise notice 'Test 1: Placing a valid bet (free of charge)...';
   select tokens into student_tokens_before from public.profiles where id = student_id;
   
   -- Call place_bet
-  perform public.place_bet(test_class_date, 40);
+  perform public.place_bet(test_class_id, 40);
   
   select tokens into student_tokens_after from public.profiles where id = student_id;
-  if student_tokens_after != student_tokens_before - 10 then
-    raise exception 'Test 1 Failed: Valid bet did not deduct exactly 10 tokens. Before: %, After: %', student_tokens_before, student_tokens_after;
+  if student_tokens_after != student_tokens_before then
+    raise exception 'Test 1 Failed: Valid bet changed token balance. Before: %, After: %', student_tokens_before, student_tokens_after;
   end if;
-  raise notice '-> Test 1 Passed: Valid bet processed and 10 tokens deducted.';
+  raise notice '-> Test 1 Passed: Valid bet processed and 0 tokens deducted.';
 
 
   -- ----------------------------------------------------
@@ -72,11 +76,11 @@ begin
   -- ----------------------------------------------------
   raise notice 'Test 2: Placing a bet on a class starting in < 20 minutes (Should Fail)...';
   begin
-    perform public.place_bet(locked_class_date, 45);
+    perform public.place_bet(locked_class_id, 45);
     raise exception 'Test 2 Failed: Betting was allowed within the 20-minute lock window!';
   exception
     when others then
-      if sqlerrm like '%Betting is closed%' then
+      if sqlerrm like '%geschlossen%' then
         raise notice '-> Test 2 Passed: Time-lock correctly blocked the bet (Error: %)', sqlerrm;
       else
         raise exception 'Test 2 Failed with unexpected error: %', sqlerrm;
@@ -89,7 +93,7 @@ begin
   -- ----------------------------------------------------
   raise notice 'Test 3: Attempting to double-bet on the same class (Should Fail)...';
   begin
-    perform public.place_bet(test_class_date, 42);
+    perform public.place_bet(test_class_id, 42);
     raise exception 'Test 3 Failed: User was allowed to place more than one bet for the same class!';
   exception
     when others then
@@ -99,24 +103,29 @@ begin
 
 
   -- ----------------------------------------------------
-  -- 5. TEST CASE: INSUFFICIENT BALANCE ENFORCEMENT
+  -- 5. TEST CASE: FREE BETTING WITH ZERO TOKENS
   -- ----------------------------------------------------
-  raise notice 'Test 4: Placing a bet with zero tokens (Should Fail)...';
+  raise notice 'Test 4: Placing a bet with zero tokens (Should Succeed)...';
   -- Manually empty tokens for this transaction
-  update public.profiles set tokens = 5 where id = student_id;
+  update public.profiles set tokens = 0 where id = student_id;
+  -- Remove previous bet to allow placing a new one
+  delete from public.bets where user_id = student_id and class_id = test_class_id;
   begin
-    perform public.place_bet(test_class_date, 30);
-    raise exception 'Test 4 Failed: User was allowed to bet with insufficient tokens!';
+    perform public.place_bet(test_class_id, 30);
+    select tokens into student_tokens_after from public.profiles where id = student_id;
+    if student_tokens_after != 0 then
+      raise exception 'Test 4 Failed: Token balance changed from 0 after placing free bet.';
+    end if;
+    raise notice '-> Test 4 Passed: User was allowed to bet with zero tokens.';
   exception
     when others then
-      if sqlerrm like '%Insufficient tokens%' then
-        raise notice '-> Test 4 Passed: Insufficient balance correctly blocked (Error: %)', sqlerrm;
-      else
-        raise exception 'Test 4 Failed with unexpected error: %', sqlerrm;
-      end if;
+      raise exception 'Test 4 Failed: Could not place bet with zero tokens: %', sqlerrm;
   end;
-  -- Restore tokens for subsequent tests
+  -- Restore tokens and bet for subsequent tests
   update public.profiles set tokens = 90 where id = student_id;
+  delete from public.bets where user_id = student_id and class_id = test_class_id;
+  insert into public.bets (user_id, class_id, guess, status, payout)
+  values (student_id, test_class_id, 40, 'pending', 0);
 
 
   -- ----------------------------------------------------
@@ -124,7 +133,7 @@ begin
   -- ----------------------------------------------------
   raise notice 'Test 5: Placing a bet with negative attendance guess (Should Fail)...';
   begin
-    perform public.place_bet(test_class_date, -5);
+    perform public.place_bet(test_class_id, -5);
     raise exception 'Test 5 Failed: Negative guesses were accepted!';
   exception
     when others then
@@ -137,11 +146,11 @@ begin
   -- ----------------------------------------------------
   raise notice 'Test 6: Student trying to resolve bets (Should Fail)...';
   begin
-    perform public.resolve_bets(40, test_class_date);
+    perform public.resolve_bets(40, test_class_id);
     raise exception 'Test 6 Failed: Student was allowed to resolve bets!';
   exception
     when others then
-      if sqlerrm like '%Only admins%' then
+      if sqlerrm like '%Admins%' then
         raise notice '-> Test 6 Passed: Unauthorized resolution blocked (Error: %)', sqlerrm;
       else
         raise exception 'Test 6 Failed with unexpected error: %', sqlerrm;
@@ -157,27 +166,27 @@ begin
   -- Create mock bets for exact match, off-by-1, off-by-2, and off-by-3
   -- Profiles are already auto-created via auth.users in Step 1.
   -- Mock user 3: Guess 40 (Exact match -> +50 tokens)
-  insert into public.bets (user_id, bet_date, guess, status, payout)
-  values ('00000000-0000-0000-0000-000000000003', test_class_date, 40, 'pending', 0);
+  insert into public.bets (user_id, class_id, guess, status, payout)
+  values ('00000000-0000-0000-0000-000000000003', test_class_id, 40, 'pending', 0);
 
   -- Mock user 4: Guess 41 (Off-by-1 -> +20 tokens)
-  insert into public.bets (user_id, bet_date, guess, status, payout)
-  values ('00000000-0000-0000-0000-000000000004', test_class_date, 41, 'pending', 0);
+  insert into public.bets (user_id, class_id, guess, status, payout)
+  values ('00000000-0000-0000-0000-000000000004', test_class_id, 41, 'pending', 0);
 
   -- Mock user 5: Guess 42 (Off-by-2 -> +10 tokens)
-  insert into public.bets (user_id, bet_date, guess, status, payout)
-  values ('00000000-0000-0000-0000-000000000005', test_class_date, 42, 'pending', 0);
+  insert into public.bets (user_id, class_id, guess, status, payout)
+  values ('00000000-0000-0000-0000-000000000005', test_class_id, 42, 'pending', 0);
 
   -- Mock user 6: Guess 43 (Off-by-3 -> 0 tokens)
-  insert into public.bets (user_id, bet_date, guess, status, payout)
-  values ('00000000-0000-0000-0000-000000000006', test_class_date, 43, 'pending', 0);
+  insert into public.bets (user_id, class_id, guess, status, payout)
+  values ('00000000-0000-0000-0000-000000000006', test_class_id, 43, 'pending', 0);
 
   -- Change execution context to Admin user
   perform set_config('role', 'authenticated', true);
   perform set_config('request.jwt.claims', json_build_object('sub', admin_id::text)::text, true);
 
   -- Resolve the class to actual 40
-  perform public.resolve_bets(40, test_class_date);
+  perform public.resolve_bets(40, test_class_id);
 
   -- Validate exact match user (Expected tokens: 100 base + 50 payout = 150)
   select tokens into student_tokens_after from public.profiles where id = '00000000-0000-0000-0000-000000000003';
